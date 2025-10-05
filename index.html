@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Topi Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="loadingOverlay" class="loading-overlay">
+    Loading...
+</div>
+
+<div id="authOverlay">
+    <div class="auth-container">
+        <h2>Вход в игру</h2>
+        <div class="input-group">
+            <input type="text" id="usernameInput" placeholder="Логин">
+        </div>
+        <div class="input-group">
+            <input type="password" id="passwordInput" placeholder="Пароль">
+        </div>
+        <div class="button-group">
+            <button id="loginBtn">Войти</button>
+            <button id="registerBtn">Регистрация</button>
+        </div>
+        <div id="authMessage" class="auth-message"></div>
+    </div>
+</div>
+
+<!-- MAIN MENU - This is always visible until game starts -->
+<div id="main-menu">
+    <button id="enterGame">Enter Game</button>
+</div>
+
+<!-- GAME CONTAINER - This starts hidden -->
+<div id="game-container" style="display: none;">
+    <div id="debug-info">
+        <div class="info-item">Your ID: <span id="playerId">-</span></div>
+        <div class="info-item" id="coordinates">Coordinates: 0, 0</div>
+        <div class="info-item">Players: <span id="playerCount">0</span></div>
+    </div>
+
+    <div id="pixi-container"></div>
+
+    <!-- Дополнительные UI элементы из старого CSS -->
+    <div class="player-info">
+        <div class="coordinates">X: 0</div>
+        <div class="coordinates">Y: 0</div>
+        <div class="coordinates">Players: <span id="playerCountOld">0</span></div>
+    </div>
+
+    <div class="controls-hint">
+        Use WASD or Arrow Keys to move
+    </div>
+
+    <div class="connection-status connected">
+        Connected
+    </div>
+
+    <div class="zone-indicator">
+        Common Zone
+    </div>
+
+    <div class="cooldown-indicator" style="display: none;">
+        Cooldown: 3s
+    </div>
+</div>
+
+<script src="https://pixijs.download/release/pixi.js"></script>
+<script type="module" src="src/index.js"></script>
+</body>
+</html>
