@@ -4,9 +4,10 @@ class GameClient {
         this.ws = null;
         this.gameState = {
             players: {},
+            mobs: {},
             myId: null,
-            worldSize: 7000, // Updated for all zones
-            worldHeight: 1000
+            worldSize: 34000, // Updated for all zones
+            worldHeight: 3000
         };
 
         // PixiJS containers
@@ -16,6 +17,9 @@ class GameClient {
         this.portalsContainer = null;
         this.gridGraphics = null;
         this.worldBorder = null;
+        this.mobsContainer = null;
+        this.mobSprites = {};
+        this.mobTextures = {};
 
         this.playerRadius = 15;
         this.keys = {};
@@ -39,24 +43,31 @@ class GameClient {
 
         // Define zones
         this.zones = {
-            common: { x: 0, width: 1000, color: 0x666666, name: "Common Zone" },
-            uncommon: { x: 1500, width: 1000, color: 0x00FF00, name: "Uncommon Zone" },
-            rare: { x: 3000, width: 1000, color: 0x0088FF, name: "Rare Zone" },
-            epic: { x: 4500, width: 1000, color: 0xFF00FF, name: "Epic Zone" },
-            legendary: { x: 6000, width: 1000, color: 0xFFAA00, name: "Legendary Zone" }
+            common: { x: 0, width: 6000, height: 3000, color: 0x666666, name: "Common Zone" },
+            uncommon: { x: 7000, width: 6000, height: 3000, color: 0x00FF00, name: "Uncommon Zone" },
+            rare: { x: 14000, width: 6000, height: 3000, color: 0x0088FF, name: "Rare Zone" },
+            epic: { x: 21000, width: 6000, height: 3000, color: 0xFF00FF, name: "Epic Zone" },
+            legendary: { x: 28000, width: 6000, height: 3000, color: 0xFFAA00, name: "Legendary Zone" }
         };
 
-        // Define portals
+        // Обновляем позиции порталов
         this.portals = [
-            { id: 'P1', x: 800, y: 500, zone: 'common' },
-            { id: 'P2', x: 1700, y: 500, zone: 'uncommon' },
-            { id: 'P3', x: 2300, y: 500, zone: 'uncommon' },
-            { id: 'P4', x: 3200, y: 500, zone: 'rare' },
-            { id: 'P5', x: 3800, y: 500, zone: 'rare' },
-            { id: 'P6', x: 4700, y: 500, zone: 'epic' },
-            { id: 'P7', x: 5300, y: 500, zone: 'epic' },
-            { id: 'P8', x: 6200, y: 500, zone: 'legendary' }
+            { id: 'P1', x: 5800, y: 1500, zone: 'common' },
+            { id: 'P2', x: 7200, y: 1500, zone: 'uncommon' },
+            { id: 'P3', x: 12800, y: 1500, zone: 'uncommon' },
+            { id: 'P4', x: 14200, y: 1500, zone: 'rare' },
+            { id: 'P5', x: 19800, y: 1500, zone: 'rare' },
+            { id: 'P6', x: 21200, y: 1500, zone: 'epic' },
+            { id: 'P7', x: 26800, y: 1500, zone: 'epic' },
+            { id: 'P8', x: 28200, y: 1500, zone: 'legendary' }
         ];
+
+        this.collisionEffects = {};
+        this.collisionParticles = [];
+        this.lastCollisionTime = 0;
+        this.collisionCooldown = 500;
+
+        this.zoomLevel = 1; // <- ЕДИНСТВЕННАЯ переменная для изменения FOV
     }
 
     async init() {
@@ -130,14 +141,18 @@ class GameClient {
             this.playersContainer = new PIXI.Container();
             this.minimapContainer = new PIXI.Container();
             this.portalsContainer = new PIXI.Container();
+            this.mobsContainer = new PIXI.Container();
 
             this.app.stage.addChild(this.worldContainer);
             this.worldContainer.addChild(this.portalsContainer);
             this.worldContainer.addChild(this.playersContainer);
+            this.worldContainer.addChild(this.mobsContainer);
 
             this.drawFixedGrid();
             this.setupMinimap();
             this.createPortals();
+
+            await this.loadMobTextures();
 
             window.addEventListener('resize', () => this.resizeApp());
 
@@ -146,6 +161,22 @@ class GameClient {
             console.error('Failed to initialize PixiJS:', error);
             throw error;
         }
+    }
+
+    getVisibleArea() {
+        const myPlayer = this.gameState.players[this.gameState.myId];
+        if (!myPlayer) return { x: 0, y: 0, width: 0, height: 0 };
+
+        // Вычисляем размер видимой области с учетом зума
+        const viewportWidth = this.app.screen.width / this.zoomLevel;
+        const viewportHeight = this.app.screen.height / this.zoomLevel;
+
+        return {
+            x: myPlayer.x - viewportWidth / 2 - 100,  // + буфер 100px
+            y: myPlayer.y - viewportHeight / 2 - 100,
+            width: viewportWidth + 200,               // + буфер
+            height: viewportHeight + 200
+        };
     }
 
     async loadPortalTextures() {
@@ -220,14 +251,14 @@ class GameClient {
             this.worldBorder.drawRect(zone.x, 0, zone.width, this.gameState.worldHeight);
             this.worldBorder.endFill();
 
-            // Draw zone borders
-            this.worldBorder.lineStyle(3, zone.color, 0.7);
+            // Draw zone borders - CHANGED TO RED AND THICKER
+            this.worldBorder.lineStyle(12, 0xFF0000, 0.9); // Thicker red borders
             this.worldBorder.drawRect(zone.x, 0, zone.width, this.gameState.worldHeight);
         });
 
-        // Draw world border
-        this.worldBorder.lineStyle(5, 0xFFFFFF, 1);
-        this.worldBorder.drawRect(0, 0, this.gameState.worldWidth, this.gameState.worldHeight);
+        // Draw world border - CHANGED TO RED AND THICKER
+        this.worldBorder.lineStyle(12, 0xFF0000, 1); // Even thicker red border for world edges
+        this.worldBorder.drawRect(0, 0, this.gameState.worldSize, this.gameState.worldHeight);
 
         this.worldContainer.addChildAt(this.worldBorder, 0);
 
@@ -288,14 +319,20 @@ class GameClient {
         this.app.stage.addChild(this.fixedGrid);
     }
 
+    isObjectVisible(object, visibleArea) {
+        return object.x >= visibleArea.x &&
+            object.x <= visibleArea.x + visibleArea.width &&
+            object.y >= visibleArea.y &&
+            object.y <= visibleArea.y + visibleArea.height;
+    }
+
     drawPlayers() {
         const currentSprites = new Set();
+        const visibleArea = this.getVisibleArea();
 
+        // Теперь gameState.players содержит только игроков текущей зоны
         Object.values(this.gameState.players).forEach(player => {
-            if (player.x < 0 || player.x > this.gameState.worldSize ||
-                player.y < 0 || player.y > this.gameState.worldHeight) {
-                return;
-            }
+            if (!this.isObjectVisible(player, visibleArea)) return;
 
             const playerId = player.id;
             currentSprites.add(playerId);
@@ -307,65 +344,179 @@ class GameClient {
 
                 const textureWidth = this.playerTexture.width;
                 const desiredDiameter = this.playerRadius * 2;
-                const scale = desiredDiameter / textureWidth;
-
-                playerSprite.scale.set(scale);
+                const baseScale = desiredDiameter / textureWidth;
+                playerSprite.scale.set(baseScale);
 
                 this.playerSprites[playerId] = playerSprite;
                 this.playersContainer.addChild(playerSprite);
+
+                console.log(`Created player ${playerId} in current zone`);
             }
 
             playerSprite.x = player.x;
             playerSprite.y = player.y;
 
-            // Render username
-            let playerText = playerSprite.getChildByName('playerText');
-            const displayName = player.username || player.id.substring(0, 8);
+            // Обновляем имя игрока
+            this.updatePlayerName(player, playerSprite);
 
-            if (!playerText) {
-                playerText = new PIXI.Text(displayName, {
-                    fontFamily: 'Arial',
-                    fontSize: 12,
-                    fill: 0xFFFFFF,
-                    align: 'center',
-                    stroke: 0x000000,
-                    strokeThickness: 3
-                });
-                playerText.anchor.set(0.5);
-                playerText.name = 'playerText';
-                playerText.y = -25;
-                playerSprite.addChild(playerText);
-            } else {
-                playerText.text = displayName;
-            }
-
-            // Highlight self
-            if (player.id === this.gameState.myId) {
-                let highlight = playerSprite.getChildByName('highlight');
-                if (!highlight) {
-                    highlight = new PIXI.Graphics();
-                    highlight.name = 'highlight';
-                    highlight.lineStyle(3, 0x00FF00);
-                    highlight.drawCircle(0, 0, playerSprite.width / 2);
-                    playerSprite.addChildAt(highlight, 0);
-                }
-            } else {
-                playerSprite.tint = 0xFFFFFF;
-                const highlight = playerSprite.getChildByName('highlight');
-                if (highlight) {
-                    playerSprite.removeChild(highlight);
-                }
-            }
+            // Обработка эффектов
+            this.handleCollisionEffects(player, playerSprite);
+            this.handlePlayerHighlight(player, playerSprite);
         });
 
-        // Cleanup old sprites
+        // Очистка спрайтов игроков, которых больше нет в зоне
         Object.keys(this.playerSprites).forEach(playerId => {
             if (!currentSprites.has(playerId)) {
                 const sprite = this.playerSprites[playerId];
                 this.playersContainer.removeChild(sprite);
                 delete this.playerSprites[playerId];
+                console.log(`Removed player ${playerId} from rendering (left zone)`);
             }
         });
+    }
+
+    updatePlayerName(player, playerSprite) {
+        let playerText = playerSprite.getChildByName('playerText');
+        const displayName = player.username || player.id.substring(0, 8);
+
+        if (!playerText) {
+            playerText = new PIXI.Text(displayName, {
+                fontFamily: 'Arial',
+                fontSize: 12,
+                fill: 0xFFFFFF,
+                align: 'center',
+                stroke: 0x000000,
+                strokeThickness: 3
+            });
+            playerText.anchor.set(0.5);
+            playerText.name = 'playerText';
+            playerText.y = -25;
+            playerSprite.addChild(playerText);
+        } else {
+            playerText.text = displayName;
+        }
+    }
+
+    // Обработка визуальных эффектов коллизий
+    handleCollisionEffects(player, playerSprite) {
+        // Красная обводка при коллизии
+        let collisionHighlight = playerSprite.getChildByName('collisionHighlight');
+
+        if (player.is_colliding) {
+            if (!collisionHighlight) {
+                collisionHighlight = new PIXI.Graphics();
+                collisionHighlight.name = 'collisionHighlight';
+                playerSprite.addChildAt(collisionHighlight, 0);
+            }
+
+            collisionHighlight.clear();
+            collisionHighlight.lineStyle(4, 0xFF0000, 0.8);
+            collisionHighlight.drawCircle(0, 0, this.playerRadius);
+
+            // Анимация "пульсации" без изменения масштаба спрайта
+            const pulseIntensity = Math.sin(Date.now() * 0.02) * 0.2 + 1; // от 0.8 до 1.2
+            collisionHighlight.scale.set(pulseIntensity);
+
+            // Создаем эффект частиц при начале коллизии
+            this.createCollisionParticles(player.x, player.y);
+
+        } else {
+            // Убираем эффекты коллизии
+            if (collisionHighlight) {
+                collisionHighlight.clear();
+                collisionHighlight.scale.set(1); // Сбрасываем масштаб
+            }
+
+            // ВАЖНО: НЕ изменяем масштаб самого спрайта игрока!
+            // Базовый масштаб устанавливается только при создании
+        }
+    }
+
+    // Создание эффекта частиц при коллизии
+    createCollisionParticles(x, y) {
+        const now = Date.now();
+        if (now - this.lastCollisionTime < this.collisionCooldown) {
+            return;
+        }
+
+        this.lastCollisionTime = now;
+
+        for (let i = 0; i < 8; i++) {
+            const particle = new PIXI.Graphics();
+            particle.beginFill(this.getRandomColor());
+            particle.drawCircle(0, 0, 3);
+            particle.endFill();
+
+            particle.x = x;
+            particle.y = y;
+
+            // Случайное направление и скорость
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 2 + Math.random() * 3;
+            particle.vx = Math.cos(angle) * speed;
+            particle.vy = Math.sin(angle) * speed;
+            particle.life = 30; // Время жизни в кадрах
+
+            this.playersContainer.addChild(particle);
+            this.collisionParticles.push(particle);
+        }
+    }
+
+    // Обновление частиц коллизий
+    updateCollisionParticles() {
+        for (let i = this.collisionParticles.length - 1; i >= 0; i--) {
+            const particle = this.collisionParticles[i];
+
+            particle.x += particle.vx;
+            particle.y += particle.vy;
+            particle.life--;
+
+            // Уменьшаем прозрачность
+            particle.alpha = particle.life / 30;
+
+            if (particle.life <= 0) {
+                this.playersContainer.removeChild(particle);
+                this.collisionParticles.splice(i, 1);
+            }
+        }
+    }
+
+    // Обработка подсветки игрока
+    handlePlayerHighlight(player, playerSprite) {
+        let highlight = playerSprite.getChildByName('highlight');
+
+        if (player.id === this.gameState.myId) {
+            if (!highlight) {
+                highlight = new PIXI.Graphics();
+                highlight.name = 'highlight';
+                playerSprite.addChildAt(highlight, 0);
+            }
+
+            highlight.clear();
+
+            if (player.is_colliding) {
+                // Двойная обводка при коллизии своего игрока
+                highlight.lineStyle(3, 0xFF0000); // Красная внутренняя
+                highlight.drawCircle(0, 0, this.playerRadius);
+                highlight.lineStyle(2, 0x00FF00); // Зеленая внешняя
+                highlight.drawCircle(0, 0, this.playerRadius + 3);
+            } else {
+                // Обычная зеленая обводка
+                highlight.lineStyle(3, 0x00FF00);
+                highlight.drawCircle(0, 0, this.playerRadius);
+            }
+        } else {
+            // Убираем подсветку у других игроков
+            if (highlight) {
+                playerSprite.removeChild(highlight);
+            }
+        }
+    }
+
+    // Вспомогательный метод для случайного цвета частиц
+    getRandomColor() {
+        const colors = [0xFF6B6B, 0x4ECDC4, 0x45B7D1, 0x96CEB4, 0xFFEAA7, 0xDDA0DD, 0x98FB98, 0xFFD700];
+        return colors[Math.floor(Math.random() * colors.length)];
     }
 
     drawMinimap(player) {
@@ -374,7 +525,8 @@ class GameClient {
             this.minimapContainer.removeChildAt(1);
         }
 
-        const minimapSize = 120;
+        const minimapWidth = 240;
+        const minimapHeight = 120;
 
         // Find current zone based on player position
         const currentZone = this.getCurrentZone(player);
@@ -383,7 +535,7 @@ class GameClient {
         // Draw current zone on minimap
         const zoneRect = new PIXI.Graphics();
         zoneRect.beginFill(currentZone.color, 0.7);
-        zoneRect.drawRect(0, 0, minimapSize, minimapSize);
+        zoneRect.drawRect(0, 0, minimapWidth, minimapHeight);
         zoneRect.endFill();
         this.minimapContainer.addChild(zoneRect);
 
@@ -397,13 +549,16 @@ class GameClient {
             strokeThickness: 2
         });
         zoneText.anchor.set(0.5);
-        zoneText.x = minimapSize / 2;
+        zoneText.x = minimapWidth / 2;
         zoneText.y = 10;
         this.minimapContainer.addChild(zoneText);
 
         // Calculate scaling for the current zone
-        const scaleX = minimapSize / currentZone.width;
-        const scaleY = minimapSize / this.gameState.worldHeight;
+        const scaleX = minimapWidth / currentZone.width;
+        const scaleY = minimapHeight / currentZone.height;
+
+        // Get visible area
+        const visibleArea = this.getVisibleArea();
 
         // Draw portals in current zone
         this.portals.forEach(portal => {
@@ -436,9 +591,10 @@ class GameClient {
             }
         });
 
-        // Draw ALL players in current zone (including current player)
+        // Draw ONLY VISIBLE players in current zone
         Object.values(this.gameState.players).forEach(p => {
-            if (this.isInZone(p, currentZone)) {
+            // Check if player is in current zone AND in visible area
+            if (this.isInZone(p, currentZone) && this.isObjectVisible(p, visibleArea)) {
                 // Calculate relative position within current zone
                 const relativeX = p.x - currentZone.x;
                 const mapX = relativeX * scaleX;
@@ -460,6 +616,23 @@ class GameClient {
                 this.minimapContainer.addChild(playerDot);
             }
         });
+
+        // Draw ONLY VISIBLE mobs in current zone
+        Object.values(this.gameState.mobs).forEach(mob => {
+            // Check if mob is in current zone AND in visible area
+            if (this.isInZone(mob, currentZone) && this.isObjectVisible(mob, visibleArea)) {
+                const relativeX = mob.x - currentZone.x;
+                const mapX = relativeX * scaleX;
+                const mapY = mob.y * scaleY;
+
+                const mobDot = new PIXI.Graphics();
+                mobDot.beginFill(0xFFA500); // Orange for mobs
+                mobDot.drawCircle(mapX, mapY, 2);
+                mobDot.endFill();
+
+                this.minimapContainer.addChild(mobDot);
+            }
+        });
     }
 
     getCurrentZone(player) {
@@ -474,13 +647,16 @@ class GameClient {
     }
 
     // NEW: Helper method to check if player is in specific zone
-    isInZone(player, zone) {
-        return player.x >= zone.x && player.x <= zone.x + zone.width;
+    isInZone(entity, zone) {
+        return entity.x >= zone.x &&
+            entity.x <= zone.x + zone.width &&
+            entity.y >= 0 &&
+            entity.y <= zone.height;
     }
 
-
     setupMinimap() {
-        const minimapSize = 120;
+        const minimapWidth = 240;  // Увеличили в 2 раза по ширине
+        const minimapHeight = 120; // Увеличили в 2 раза по высоте
         const padding = 10;
 
         this.minimapContainer.x = padding;
@@ -489,12 +665,13 @@ class GameClient {
         const minimapBg = new PIXI.Graphics();
         minimapBg.beginFill(0x0A0A1A, 0.8);
         minimapBg.lineStyle(2, 0x000000);
-        minimapBg.drawRect(0, 0, minimapSize, minimapSize);
+        minimapBg.drawRect(0, 0, minimapWidth, minimapHeight);
         minimapBg.endFill();
 
         this.minimapContainer.addChild(minimapBg);
         this.app.stage.addChild(this.minimapContainer);
     }
+
 
     resizeApp() {
         this.app.renderer.resize(window.innerWidth, window.innerHeight);
@@ -759,10 +936,10 @@ class GameClient {
             case 'state':
                 this.gameState.players = data.players;
                 this.gameState.myId = data.yourId;
+                this.gameState.mobs = data.mobs || {};
                 this.gameState.worldWidth = data.worldWidth || 7000;
                 this.gameState.worldHeight = data.worldHeight || 1000;
 
-                // Update zone display if zone information is provided
                 if (data.yourZone) {
                     this.updateZoneDisplay(data.yourZone);
                 }
@@ -771,11 +948,16 @@ class GameClient {
                 document.getElementById('enterGame').style.display = 'none';
                 this.updateUI();
                 break;
+
+            case 'collision':
+                this.handleCollisionMessage(data.data);
+                break;
+
             case 'pong':
                 break;
+
             case 'portal_teleport':
                 this.handlePortalTeleport(data.data);
-                // Force minimap update after teleport
                 const myPlayer = this.gameState.players[this.gameState.myId];
                 if (myPlayer) {
                     this.drawMinimap(myPlayer);
@@ -783,7 +965,6 @@ class GameClient {
                 break;
         }
     }
-
 // Add method to update zone display
     updateZoneDisplay(zoneKey) {
         const zoneDisplay = document.querySelector('.zone-indicator');
@@ -871,11 +1052,22 @@ class GameClient {
             document.getElementById('playerCount').textContent =
                 Object.keys(this.gameState.players).length;
 
+            // Показываем количество мобов в дебаг информации
+            const mobCount = Object.keys(this.gameState.mobs).length;
+            let mobInfo = document.getElementById('mobInfo');
+            if (!mobInfo) {
+                mobInfo = document.createElement('div');
+                mobInfo.id = 'mobInfo';
+                document.getElementById('debug-info').appendChild(mobInfo);
+            }
+            mobInfo.textContent = `Mobs: ${mobCount}`;
+
             if (this.username) {
                 document.getElementById('playerId').textContent = this.username;
             }
         }
     }
+
 
     handleMovement() {
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN || !this.gameState.myId) return;
@@ -910,24 +1102,121 @@ class GameClient {
 
         this.lastUpdateTime = currentTime;
 
+        this.updateCollisionParticles();
         this.drawWorld();
     }
+
+    handleCollisionMessage(data) {
+        const { with_player, impact } = data;
+
+        // Показываем уведомление о коллизии
+        this.showCollisionNotification(`Collision with ${with_player}!`);
+
+        // Виброотдача (если поддерживается)
+        if (navigator.vibrate) {
+            navigator.vibrate(100);
+        }
+    }
+
+    showCollisionNotification(message) {
+        let notification = document.getElementById('collision-notification');
+        if (!notification) {
+            notification = document.createElement('div');
+            notification.id = 'collision-notification';
+            notification.style.cssText = `
+                position: fixed;
+                top: 150px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(255, 0, 0, 0.8);
+                color: white;
+                padding: 10px 20px;
+                border-radius: 5px;
+                z-index: 1000;
+                font-family: Arial, sans-serif;
+                font-weight: bold;
+                text-shadow: 1px 1px 2px black;
+            `;
+            document.body.appendChild(notification);
+        }
+
+        notification.textContent = message;
+        notification.style.display = 'block';
+
+        // Автоматическое скрытие через 2 секунды
+        setTimeout(() => {
+            notification.style.display = 'none';
+        }, 2000);
+    }
+
 
     drawWorld() {
         const myPlayer = this.gameState.players[this.gameState.myId];
         if (!myPlayer) return;
 
-        // Center camera on player
-        this.camera.x = -myPlayer.x + this.app.screen.width / 2;
-        this.camera.y = -myPlayer.y + this.app.screen.height / 2;
+        // Apply zoom to world container
+        this.worldContainer.scale.set(this.zoomLevel);
 
-        // Update world container position
-        this.worldContainer.x = this.camera.x;
-        this.worldContainer.y = this.camera.y;
+        // Get current zone
+        const currentZone = this.getCurrentZone(myPlayer);
+
+        if (currentZone) {
+            // Calculate viewport dimensions in world coordinates
+            const viewportWidth = this.app.screen.width / this.zoomLevel;
+            const viewportHeight = this.app.screen.height / this.zoomLevel;
+
+            // Calculate ideal camera position (centered on player)
+            let desiredCameraX = -myPlayer.x * this.zoomLevel + this.app.screen.width / 2;
+            let desiredCameraY = -myPlayer.y * this.zoomLevel + this.app.screen.height / 2;
+
+            // Calculate world bounds for the current zone
+            const worldMinX = -currentZone.x - currentZone.width + viewportWidth;
+            const worldMaxX = -currentZone.x;
+            const worldMinY = -currentZone.height + viewportHeight;
+            const worldMaxY = 0;
+
+            // Clamp camera position to zone boundaries
+            let clampedCameraX = desiredCameraX;
+            let clampedCameraY = desiredCameraY;
+
+            // Horizontal clamping
+            if (viewportWidth <= currentZone.width) {
+                // Viewport fits within zone width - clamp to zone edges
+                clampedCameraX = Math.min(Math.max(desiredCameraX, worldMinX), worldMaxX);
+            } else {
+                // Viewport wider than zone - center the zone
+                clampedCameraX = (worldMinX + worldMaxX) / 2;
+            }
+
+            // Vertical clamping
+            if (viewportHeight <= currentZone.height) {
+                // Viewport fits within zone height - clamp to zone edges
+                clampedCameraY = Math.min(Math.max(desiredCameraY, worldMinY), worldMaxY);
+            } else {
+                // Viewport taller than zone - center the zone vertically
+                clampedCameraY = (worldMinY + worldMaxY) / 2;
+            }
+
+            // Apply clamped camera position
+            this.camera.x = clampedCameraX;
+            this.camera.y = clampedCameraY;
+
+            // Update world container position
+            this.worldContainer.x = this.camera.x;
+            this.worldContainer.y = this.camera.y;
+
+        } else {
+            // Fallback to original camera behavior if no zone found
+            this.camera.x = -myPlayer.x * this.zoomLevel + this.app.screen.width / 2;
+            this.camera.y = -myPlayer.y * this.zoomLevel + this.app.screen.height / 2;
+            this.worldContainer.x = this.camera.x;
+            this.worldContainer.y = this.camera.y;
+        }
 
         // Draw world elements
         this.drawWorldSquare();
         this.drawPlayers();
+        this.drawMobs();
         this.drawMinimap(myPlayer);
     }
 
@@ -965,7 +1254,157 @@ class GameClient {
             this.app.destroy(true);
         }
     }
+
+    async loadMobTextures() {
+        // Простые цвета для разных типов мобов (в реальном проекте загружайте текстуры)
+        const mobColors = {
+            'goblin': 0x00FF00,    // Зеленый
+            'orc': 0xFF0000,       // Красный
+            'wolf': 0x888888,      // Серый
+        };
+
+        // Создаем простые текстуры для мобов
+        for (const [mobType, color] of Object.entries(mobColors)) {
+            const graphics = new PIXI.Graphics();
+            graphics.beginFill(color);
+            graphics.drawCircle(0, 0, 20); // Радиус 20
+            graphics.endFill();
+
+            // Добавляем отличительные черты
+            graphics.beginFill(0x000000);
+            if (mobType === 'goblin') {
+                // Гоблин - большие уши
+                graphics.drawEllipse(-15, -10, 5, 10);
+                graphics.drawEllipse(15, -10, 5, 10);
+            } else if (mobType === 'orc') {
+                // Орк - клыки
+                graphics.drawRect(-12, 5, 5, 8);
+                graphics.drawRect(7, 5, 5, 8);
+            } else if (mobType === 'wolf') {
+                // Волк - заостренные уши
+                graphics.drawPolygon([-15, -15, -10, -5, -5, -15]);
+                graphics.drawPolygon([15, -15, 10, -5, 5, -15]);
+            }
+            graphics.endFill();
+
+            this.mobTextures[mobType] = this.app.renderer.generateTexture(graphics);
+        }
+    }
+
+    drawMobs() {
+        const currentMobSprites = new Set();
+        const visibleArea = this.getVisibleArea();
+
+        // Теперь gameState.mobs содержит только мобов текущей зоны
+        Object.values(this.gameState.mobs).forEach(mob => {
+            if (!this.isObjectVisible(mob, visibleArea)) return;
+
+            const mobId = mob.id;
+            currentMobSprites.add(mobId);
+
+            let mobSprite = this.mobSprites[mobId];
+            if (!mobSprite) {
+                const texture = this.mobTextures[mob.type] || this.createDefaultMobTexture(mob.type);
+                mobSprite = new PIXI.Sprite(texture);
+                mobSprite.anchor.set(0.5);
+
+                this.mobSprites[mobId] = mobSprite;
+                this.mobsContainer.addChild(mobSprite);
+
+                console.log(`Created mob ${mobId} of type ${mob.type} in current zone`);
+            }
+
+            mobSprite.x = mob.x;
+            mobSprite.y = mob.y;
+            this.drawMobHealthBar(mob, mobSprite);
+        });
+
+        // Очистка спрайтов мобов, которых больше нет в зоне
+        Object.keys(this.mobSprites).forEach(mobId => {
+            if (!currentMobSprites.has(mobId)) {
+                const sprite = this.mobSprites[mobId];
+                this.mobsContainer.removeChild(sprite);
+                delete this.mobSprites[mobId];
+                console.log(`Removed mob ${mobId} from rendering (left zone)`);
+            }
+        });
+    }
+    createDefaultMobTexture(mobType) {
+        const graphics = new PIXI.Graphics();
+
+        // Простой круг с цветом на основе типа моба
+        const color = this.getMobColor(mobType);
+        graphics.beginFill(color);
+        graphics.drawCircle(0, 0, 20);
+        graphics.endFill();
+
+        // Добавляем текст с типом моба
+        const text = new PIXI.Text(mobType.charAt(0).toUpperCase(), {
+            fontFamily: 'Arial',
+            fontSize: 12,
+            fill: 0xFFFFFF,
+            align: 'center'
+        });
+        text.anchor.set(0.5);
+        graphics.addChild(text);
+
+        return this.app.renderer.generateTexture(graphics);
+    }
+
+    getMobColor(mobType) {
+        const colors = {
+            'goblin': 0x00FF00,
+            'orc': 0xFF0000,
+            'wolf': 0x888888,
+            'default': 0xFFFF00
+        };
+        return colors[mobType] || colors.default;
+    }
+
+    drawMobHealthBar(mob, mobSprite) {
+        let healthBar = mobSprite.getChildByName('healthBar');
+        let healthBackground = mobSprite.getChildByName('healthBackground');
+
+        if (!healthBackground) {
+            healthBackground = new PIXI.Graphics();
+            healthBackground.name = 'healthBackground';
+            mobSprite.addChild(healthBackground);
+        }
+
+        if (!healthBar) {
+            healthBar = new PIXI.Graphics();
+            healthBar.name = 'healthBar';
+            mobSprite.addChild(healthBar);
+        }
+
+        const barWidth = 40;
+        const barHeight = 6;
+        const yOffset = -30;
+
+        // Фон здоровья
+        healthBackground.clear();
+        healthBackground.beginFill(0x000000);
+        healthBackground.drawRect(-barWidth/2, yOffset, barWidth, barHeight);
+        healthBackground.endFill();
+
+        // Полоска здоровья
+        healthBar.clear();
+        const healthPercent = mob.health / mob.max_health;
+        let healthColor = 0x00FF00; // Зеленый
+
+        if (healthPercent < 0.3) {
+            healthColor = 0xFF0000; // Красный
+        } else if (healthPercent < 0.6) {
+            healthColor = 0xFFFF00; // Желтый
+        }
+
+        healthBar.beginFill(healthColor);
+        healthBar.drawRect(-barWidth/2, yOffset, barWidth * healthPercent, barHeight);
+        healthBar.endFill();
+    }
 }
+
+
 
 window.addEventListener('load', async () => {
     window.gameClient = new GameClient();
