@@ -7,9 +7,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="loadingOverlay" class="loading-overlay">
-    Loading...
-</div>
+<div id="loadingOverlay" class="loading-overlay">Loading...</div>
 
 <div id="authOverlay">
     <div class="auth-container">
@@ -28,12 +26,10 @@
     </div>
 </div>
 
-<!-- MAIN MENU - This is always visible until game starts -->
 <div id="main-menu">
     <button id="enterGame">Enter Game</button>
 </div>
 
-<!-- GAME CONTAINER - This starts hidden -->
 <div id="game-container" style="display: none;">
     <div id="debug-info">
         <div class="info-item">Your ID: <span id="playerId">-</span></div>
@@ -43,31 +39,13 @@
 
     <div id="pixi-container"></div>
 
-    <!-- Дополнительные UI элементы из старого CSS -->
-    <div class="player-info">
-        <div class="coordinates">X: 0</div>
-        <div class="coordinates">Y: 0</div>
-        <div class="coordinates">Players: <span id="playerCountOld">0</span></div>
-    </div>
-
-    <div class="controls-hint">
-        Use WASD or Arrow Keys to move
-    </div>
-
-    <div class="connection-status connected">
-        Connected
-    </div>
-
-    <div class="zone-indicator">
-        Common Zone
-    </div>
-
-    <div class="cooldown-indicator" style="display: none;">
-        Cooldown: 3s
-    </div>
+    <!-- ОСТАВИТЬ ТОЛЬКО ЭТИ ЭЛЕМЕНТЫ -->
+    <div class="connection-status disconnected">Disconnected</div>
+    <div class="zone-indicator">Common Zone</div>
+    <div class="controls-hint">Use WASD or Arrow Keys to move</div>
 </div>
 
 <script src="https://pixijs.download/release/pixi.js"></script>
-<script type="module" src="src/index.js"></script>
+<script type="module" src="src/main.js"></script>
 </body>
 </html>

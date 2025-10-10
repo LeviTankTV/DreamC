@@ -1,6 +1,11 @@
-body {
+/* ===== RESET & BASE STYLES ===== */
+* {
     margin: 0;
     padding: 0;
+    box-sizing: border-box;
+}
+
+body {
     background: #1a1a2e;
     color: white;
     font-family: 'Arial', sans-serif;
@@ -8,7 +13,7 @@ body {
     user-select: none;
 }
 
-/* Loading Overlay */
+/* ===== LOADING OVERLAY ===== */
 .loading-overlay {
     position: fixed;
     top: 0;
@@ -32,14 +37,14 @@ body {
     pointer-events: none;
 }
 
-/* Auth Overlay */
+/* ===== AUTH OVERLAY ===== */
 #authOverlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.8);
+    background: rgba(0,0,0,0.9);
     z-index: 1000;
     display: none;
     justify-content: center;
@@ -47,59 +52,67 @@ body {
 }
 
 .auth-container {
-    background: white;
-    padding: 25px;
+    background: #2a2a3a;
+    padding: 30px;
     border-radius: 12px;
     text-align: center;
-    color: black;
-    min-width: 300px;
+    min-width: 320px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.auth-container h2 {
+    margin-bottom: 20px;
+    color: #4ECDC4;
 }
 
 .input-group {
-    margin: 10px 0;
+    margin: 15px 0;
 }
 
 #authOverlay input {
     width: 100%;
-    padding: 10px;
-    margin: 8px 0;
-    border: 1px solid #ccc;
+    padding: 12px;
+    margin: 5px 0;
+    border: 1px solid #444;
     border-radius: 6px;
-    box-sizing: border-box;
+    background: #1a1a2e;
+    color: white;
+    font-size: 16px;
 }
 
 .button-group {
-    margin: 10px 0;
+    margin: 20px 0 10px;
 }
 
 #authOverlay button {
-    padding: 10px 20px;
-    margin: 5px;
+    padding: 12px 24px;
+    margin: 0 8px;
     border: none;
     border-radius: 6px;
     cursor: pointer;
-    background: #4CAF50;
-    color: white;
+    background: #4ECDC4;
+    color: #1a1a2e;
     font-weight: bold;
+    font-size: 14px;
+    transition: background 0.2s;
 }
 
 #authOverlay button:hover {
-    background: #45a049;
+    background: #45B7D1;
 }
 
 .auth-message {
-    color: red;
-    margin-top: 10px;
+    color: #FF6B6B;
+    margin-top: 15px;
+    min-height: 20px;
 }
 
-/* Game Container */
+/* ===== GAME CONTAINER ===== */
 #game-container {
     position: relative;
     width: 100vw;
     height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    display: none; /* Hidden by default */
 }
 
 #pixi-container {
@@ -107,20 +120,20 @@ body {
     height: 100%;
 }
 
-/* UI Elements */
+/* ===== UI ELEMENTS ===== */
 #ui {
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 10;
+    z-index: 100;
 }
 
 #enterGame {
     background: linear-gradient(45deg, #FFD700, #FFA500);
     color: #222;
     font-weight: bold;
-    padding: 14px 30px;
+    padding: 16px 32px;
     font-size: 18px;
     border: none;
     border-radius: 8px;
@@ -132,76 +145,33 @@ body {
     transform: scale(1.05);
 }
 
-/* Debug Info */
-#debug-info {
-    position: fixed;
-    bottom: 20px;
-    left: 20px;
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: 10px;
-    border-radius: 6px;
-    font-family: Arial, sans-serif;
-    font-size: 14px;
-    z-index: 10;
-    display: none;
-}
-
-.info-item {
-    margin: 4px 0;
-}
-
-/* Additional UI Elements from Old CSS */
-.player-info {
+/* ===== GAME UI ===== */
+.zone-indicator {
     position: absolute;
-    bottom: 20px;
-    left: 20px;
-    background: rgba(0, 0, 0, 0.7);
-    padding: 12px;
-    border-radius: 8px;
-    display: none;
-    text-align: left;
-    font-size: 14px;
-    color: white;
-}
-
-.coordinates {
-    font-size: 14px;
-    margin: 5px 0;
-    padding: 3px 0;
-    border-bottom: 1px solid #333;
-}
-
-.coordinates:last-child {
-    border-bottom: none;
-}
-
-#playerCountOld {
-    color: #4CAF50;
-    font-weight: bold;
-}
-
-.controls-hint {
-    position: absolute;
-    bottom: 20px;
+    top: 20px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.7);
-    padding: 10px 15px;
-    border-radius: 6px;
-    font-size: 14px;
-    text-align: center;
+    background: rgba(102, 102, 102, 0.9);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: bold;
     z-index: 100;
+    text-align: center;
+    min-width: 200px;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    transition: background-color 0.3s ease;
 }
 
 .connection-status {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 20px;
+    right: 20px;
     background: rgba(0, 0, 0, 0.8);
-    padding: 8px 12px;
+    padding: 8px 16px;
     border-radius: 6px;
-    font-size: 12px;
+    font-size: 14px;
     z-index: 100;
 }
 
@@ -213,75 +183,132 @@ body {
     color: #FF6B6B;
 }
 
-.zone-indicator {
+.controls-hint {
     position: absolute;
-    top: 20px;
+    bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.7);
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 14px;
+    text-align: center;
+    z-index: 100;
+}
+
+/* ===== DEBUG INFO ===== */
+#debug-info {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
     background: rgba(0, 0, 0, 0.8);
     color: white;
-    padding: 10px 20px;
-    border-radius: 8px;
-    font-size: 18px;
-    font-weight: bold;
-    z-index: 100;
-    text-align: center;
-    min-width: 200px;
-}
-
-.cooldown-indicator {
-    position: absolute;
-    top: 70px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(255, 0, 0, 0.8);
-    color: white;
-    padding: 5px 15px;
-    border-radius: 5px;
+    padding: 12px;
+    border-radius: 6px;
+    font-family: Arial, sans-serif;
     font-size: 14px;
     z-index: 100;
+    display: none;
 }
 
-/* Auth Container Styles (from old CSS) */
-#auth-container {
+.info-item {
+    margin: 6px 0;
+    color: #ccc;
+}
+
+.info-item span {
+    color: white;
+    font-weight: bold;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .auth-container {
+        margin: 20px;
+        min-width: auto;
+    }
+
+    .zone-indicator {
+        font-size: 16px;
+        min-width: 180px;
+        padding: 10px 20px;
+    }
+
+    .controls-hint {
+        font-size: 12px;
+        padding: 8px 16px;
+    }
+}
+
+/* ===== MAIN MENU ===== */
+#main-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(26, 26, 46, 0.95);
     display: flex;
-    flex-direction: column;
-    align-items: center;
     justify-content: center;
-    height: 100vh;
-    background: #1a1a1a;
-    color: white;
-}
-
-#login-form {
-    display: flex;
+    align-items: center;
+    z-index: 50;
     flex-direction: column;
-    gap: 10px;
-    margin-top: 20px;
 }
 
-#login-form input {
-    padding: 10px;
-    border: 1px solid #333;
-    border-radius: 5px;
-    background: #2a2a2a;
-    color: white;
-}
-
-#login-form button {
-    padding: 10px;
+#enterGame {
+    background: linear-gradient(45deg, #FFD700, #FFA500);
+    color: #222;
+    font-weight: bold;
+    padding: 20px 40px;
+    font-size: 24px;
     border: none;
-    border-radius: 5px;
-    background: #4ECDC4;
-    color: white;
+    border-radius: 12px;
     cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 8px 32px rgba(255, 215, 0, 0.3);
+    margin: 0 auto; /* Center the button */
 }
 
-#login-form button:hover {
-    background: #45B7D1;
+#enterGame:hover {
+    transform: scale(1.1);
+    box-shadow: 0 12px 40px rgba(255, 215, 0, 0.5);
 }
 
-#login-form button:active {
-    background: #45B7D1;
-    transform: translateY(2px);
+#enterGame:active {
+    transform: scale(1.05);
 }
+
+.collision-notification {
+    position: fixed;
+    top: 150px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 0, 0, 0.9);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    z-index: 1000;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    font-size: 16px;
+    text-shadow: 1px 1px 2px black;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    border: 2px solid #FF4444;
+    animation: collisionPulse 0.5s ease-in-out;
+}
+
+@keyframes collisionPulse {
+    0% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.1); }
+    100% { transform: translateX(-50%) scale(1); }
+}
+
+.connection-status.connected {
+    background: rgba(0, 255, 0, 0.8);
+}
+
+.connection-status.disconnected {
+    background: rgba(255, 0, 0, 0.8);
+}
+
+
